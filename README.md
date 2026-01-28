@@ -1,26 +1,247 @@
+
 # Few-Shot 6D Object Pose Estimation via Decoupled Rotation and Translation with Viewpoint Encoding
+
 <p align="center">
-    <img src ="assets/overview.png" width="800" />
+  <img src="assets/overview.png" width="800"/>
 </p>
 
+This repository contains the official implementation of the paper:
+
+> **Few-Shot 6D Object Pose Estimation via Decoupled Rotation and Translation with Viewpoint Encoding**
+> *Electronics, 2026*
+> Lei Lu, Peng Cao, **Wei Pan**, et al.
+
+The proposed framework explicitly **decouples rotation and translation estimation** for monocular RGB-based 6D object pose estimation under *few-shot supervision*.
+Rotation is estimated via a **viewpoint-encoded retrieval framework trained purely on synthetic data**, while translation is regressed using **geometry-aware dense correspondences**, largely inspired by GDR-Net.
+
+---
+
+## Highlights
+
+* 🔹 **Few-shot learning**: only **600 real images per object**
+* 🔹 **Rotation–translation decoupling** reduces data dependency
+* 🔹 **Viewpoint encoder + codebook retrieval** trained on ShapeNet
+* 🔹 Evaluated on **LINEMOD, LM-O, YCB-Video**
+* 🔹 Compatible with **BOP benchmark evaluation**
+
+---
+
+## Repository Structure
+
+```text
+fs6d/
+├── assets/                  # Figures and visualizations
+├── rotation/                # Viewpoint-encoded rotation estimation
+│   ├── training/
+│   ├── evaluation/
+│   └── shapenet_render/
+├── core/                    # Translation estimation (GDR-Net style)
+│   └── modeling/
+├── datasets/                # Dataset links / loaders
+├── third_party/             # External dependencies (submodules)
+│   ├── bop_toolkit/
+│   ├── sixd_toolkit/
+│   └── detectron2/
+├── LM_pipeline.py
+├── LMO_pipeline.py
+└── README.md
+```
+
+---
+
 ## Requirements
-* Please start by installing [Miniconda3](https://conda.io/projects/conda/en/latest/user-guide/install/linux.html) with Pyhton3.8 or above.
-* This project requires the evaluation code from [bop_toolkit](https://github.com/thodan/bop_toolkit) and [sixd_toolkit](https://github.com/thodan/sixd_toolkit).
-* Install `detectron2` from [source](https://github.com/facebookresearch/detectron2)
 
-## Dataset
-Our evaluation is conducted on three datasets all downloaded from [BOP website](https://bop.felk.cvut.cz/datasets). All three datasets are stored in the same directory. e.g. ``Dataspace/lm, Dataspace/lmo, Dataspace/ycb``.
+### Environment
 
-## Rotation Estimation
-* Training 
-The rotation estimation network is trained using ShapeNet. Before training, please preprocess ShapeNet using the provided script:``training/preprocess_shapenet.py``.(Note: This preprocessing step requires Blender for rendering. Please ensure Blender is correctly installed.)
-* Evaluating 
-The trained rotation estimation network is evaluated on the LINEMOD and Occluded LINEMOD datasets using the provided evaluation pipelines: ``python LM_pipeline.py`` ``python LMO_pipeline.py`` 
+* Linux (recommended)
+* Python ≥ 3.8
+* CUDA ≥ 11.3
+* PyTorch ≥ 1.10
 
-## Translation Estimation
-The overall design of the translation estimation module is largely inspired by GDRNet.
-* Training 
-``./core/modeling/train_model.sh <config_path> <gpu_ids> (other args)``
-* Evaluating 
-``./core/modeling/test_model.sh <config_path> <gpu_ids> <ckpt_path> (other args)``
+We recommend using **Miniconda**:
+
+```bash
+conda create -n fs6d python=3.9 -y
+conda activate fs6d
+```
+
+---
+
+## Dependencies (via Git Submodules)
+
+This project relies on the official evaluation and detection toolkits:
+
+* **BOP Toolkit** (pose evaluation)
+* **SIXD Toolkit** (legacy dataset utilities)
+* **Detectron2** (object detection backbone)
+
+Clone the repository **with submodules**:
+
+```bash
+git clone --recursive https://github.com/cp-0510/fs6d.git
+cd fs6d
+```
+
+If already cloned:
+
+```bash
+git submodule update --init --recursive
+```
+
+### Install Detectron2 (from source)
+
+```bash
+cd third_party/detectron2
+pip install -e .
+```
+
+> ⚠️ Detectron2 must be installed **from source** to ensure compatibility.
+
+---
+
+## Dataset Preparation
+
+All datasets follow the **BOP format** and should be downloaded from:
+
+👉 [https://bop.felk.cvut.cz/datasets/](https://bop.felk.cvut.cz/datasets/)
+
+Supported datasets:
+
+* **LINEMOD (LM)**
+* **Occluded LINEMOD (LM-O)**
+* **YCB-Video (YCB-V)**
+
+Recommended directory layout:
+
+```text
+Dataspace/
+├── lm/
+├── lmo/
+└── ycbv/
+```
+
+Set dataset root (example):
+
+```bash
+export BOP_DATASETS_ROOT=/path/to/Dataspace
+```
+
+---
+
+## Rotation Estimation (Viewpoint Encoding)
+
+### 1. ShapeNet Preprocessing (Synthetic Training Data)
+
+Rotation estimation is trained **only on synthetic data** rendered from ShapeNet.
+
+```bash
+python rotation/training/preprocess_shapenet.py
+```
+
+**Requirements:**
+
+* Blender ≥ 3.x installed and accessible via command line
+* ShapeNetCore dataset
+
+This step:
+
+* Samples 4000 viewpoints per object
+* Renders multi-view RGB images
+* Constructs viewpoint codebooks
+
+---
+
+### 2. Rotation Network Training
+
+```bash
+python rotation/training/train_viewpoint_encoder.py
+```
+
+This trains:
+
+* Viewpoint encoder
+* In-plane rotation regressor
+* Orientation verification module
+
+---
+
+### 3. Rotation Evaluation
+
+Evaluate on LINEMOD / LM-O:
+
+```bash
+python LM_pipeline.py
+python LMO_pipeline.py
+```
+
+---
+
+## Translation Estimation (Geometry-Aware Regression)
+
+Translation estimation follows the **GDR-Net design**, predicting dense 2D–3D correspondences.
+
+### Training
+
+```bash
+./core/modeling/train_model.sh <config_path> <gpu_ids>
+```
+
+Example:
+
+```bash
+./core/modeling/train_model.sh configs/ycbv.yaml 0
+```
+
+### Evaluation
+
+```bash
+./core/modeling/test_model.sh <config_path> <gpu_ids> <checkpoint>
+```
+
+---
+
+## Evaluation Metrics
+
+* **ADD(-S)** with 10% object diameter threshold
+* **AUC of ADD(-S)** (YCB-V)
+* Optional strict **ADD(-S)@1cm** evaluation
+
+All evaluation follows the **official BOP protocol**.
+
+---
+
+## Notes & Limitations
+
+* Requires **accurate CAD models**
+* Instance-level (not category-level generalization)
+* Object detection quality affects overall performance
+* Current implementation is **not optimized for edge deployment**
+
+---
+
+## Citation
+
+If you find this work useful, please cite:
+
+```bibtex
+@article{lu2026fs6d,
+  title={Few-Shot 6D Object Pose Estimation via Decoupled Rotation and Translation with Viewpoint Encoding},
+  author={Lu, Lei and Cao, Peng and Pan, Wei and others},
+  journal={Electronics},
+  year={2026}
+}
+```
+
+---
+
+## Acknowledgements
+
+This work builds upon and reuses components from:
+
+* **BOP Toolkit**
+* **SIXD Toolkit**
+* **Detectron2**
+* **GDR-Net**
+
+We sincerely thank the authors for making their code publicly available.
 
