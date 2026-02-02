@@ -224,11 +224,15 @@ All evaluation follows the **official BOP protocol**.
 If you find this work useful, please cite:
 
 ```bibtex
-@article{lu2026fs6d,
+@article{lu2026few,
   title={Few-Shot 6D Object Pose Estimation via Decoupled Rotation and Translation with Viewpoint Encoding},
-  author={Lu, Lei and Cao, Peng and Pan, Wei and others},
+  author={Lu, Lei and Cao, Peng and Pan, Wei and Su, Zhilong and Zhang, Haojun and Zheng, Wangxing and Gao, Ge and Li, Peng},
   journal={Electronics},
-  year={2026}
+  volume={15},
+  number={3},
+  pages={561},
+  year={2026},
+  publisher={MDPI}
 }
 ```
 
